@@ -5,6 +5,7 @@ const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const { response } = require('express');
+const superagent = require('superagent');
 
 // Application Setup
 const app = express();
@@ -26,19 +27,49 @@ function rootHandler(request, response){
 
 function locationHandler(request, response){
   const city = request.query.city;
-  const locationData = require('./data/location.json');
-  const location = new Location(city, locationData);
-  response.status(200).send(location);
+  const url = 'https://us1.locationiq.com/v1/search.php';
+  superagent.get(url)
+    .query({
+      key: process.env.LOCATION_KEY,
+      q: city,
+      format: 'json'
+    })
+    .then(locationData => {
+      const location = locationData.body[0];
+      const newLocation = new Location(city, location);
+      response.status(200).send(newLocation);
+    })
+    .catch(err => {
+      console.log(err);
+      errorHandler(err, request, response)
+    });
+  //const locationData = require('./data/location.json'); // delete
+  // const location = new Location(city, locationData);
+  // response.status(200).send(location);
 }
 
 function restaurantHandler(request, response) {
-  const restaurantsData = require('./data/restaurants.json');
-  const arrayOfRestaurants = restaurantsData.nearby_restaurants;
-  const restaurantsResults = [];
-  arrayOfRestaurants.forEach(restaurantObj => {
-    restaurantsResults.push(new Restaurant(restaurantObj));
-  });
-  response.send(restaurantsResults)
+  const lat = request.query.latitude;
+  const lon = request.query.longitude;
+  const page = parseInt(request.query.page);
+  const restaurantPerPage = 5;
+  const start = ((page - 1) * restaurantPerPage + 1);
+  const url = '';
+  superagent.get(url)
+    .query({
+      latitude: lat,
+    })
+    .set('Authorization', `Bearer ${process.env.YELP_KEY}`)
+    .then()
+    .catch()
+
+  // const restaurantsData = require('./data/restaurants.json');
+  // const arrayOfRestaurants = restaurantsData.nearby_restaurants;
+  // const restaurantsResults = [];
+  // arrayOfRestaurants.forEach(restaurantObj => {
+  //   restaurantsResults.push(new Restaurant(restaurantObj));
+  // });
+  // response.send(restaurantsResults)
 }
 
 function weatherHandler(request, response) {
@@ -62,9 +93,9 @@ function errorHandler(error, request, response, next) {
 // Constructor
 function Location(city, locationData) {
   this.search_query = city;
-  this.formatted_query = locationData[0].display_name;
-  this.latitude = parseFloat(locationData[0].lat);
-  this.longitude = parseFloat(locationData[0].lon);
+  this.formatted_query = locationData.display_name;
+  this.latitude = parseFloat(locationData.lat);
+  this.longitude = parseFloat(locationData.lon);
 }
 
 function Restaurant(obj) {
