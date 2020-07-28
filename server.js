@@ -15,7 +15,7 @@ app.use(cors());
 app.get('/', rootHandler);
 app.get('/location', locationHandler);
 app.get('/yelp', restaurantHandler);
-// app.get('/weather', weatherHandler);
+app.get('/weather', weatherHandler);
 app.use('*', notFoundHandler);
 app.use(errorHandler);
 
@@ -40,6 +40,17 @@ function restaurantHandler(request, response) {
   });
   response.send(restaurantsResults)
 }
+
+function weatherHandler(request, response) {
+  const weatherData = require('./data/weather.json');
+  const arrayOfWeatherData = weatherData.data;
+  const weatherResults = [];
+  arrayOfWeatherData.forEach(location => {
+    weatherResults.push(new Weather(location));
+  });
+  response.send(weatherResults)
+}
+
 function notFoundHandler(request, response) {
   response.status(404).json({ notFound: true });
 }
@@ -64,5 +75,9 @@ function Restaurant(obj) {
   this.image_url = obj.restaurant.featured_image;
 }
 
+function Weather(conditions) {
+  this.time = conditions.valid_date;
+  this.forecast = conditions.weather.description;
+}
 // App listener
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
