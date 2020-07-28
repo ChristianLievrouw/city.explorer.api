@@ -1,7 +1,7 @@
 {
-  "name": "marc-portfolio",
+  "name": "christian-portfolio",
   "version": "1.0.0",
-  "description": "Marc Hauschildt's professional portfolio",
+  "description": "Christian Lievrouw's professional portfolio",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mlhaus/mlhaus.github.io.git"
+    "url": "git+https://github.com/ChristianLievrouw/ChristianLievrouw.github.io.git"
   },
-  "author": "Marc Hauschildt",
+  "author": "Christian Lievrouw",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/mlhaus/mlhaus.github.io/issues"
+    "url": "https://github.com/ChristianLievrouw/ChristianLievrouw.github.io/issues"
   },
-  "homepage": "https://github.com/mlhaus/mlhaus.github.io#readme",
+  "homepage": "https://github.com/ChristianLievrouw/ChristianLievrouw.github.io#readme",
   "dependencies": {
     "cors": "^2.8.5",
     "cowsay": "^1.4.0",
