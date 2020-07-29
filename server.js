@@ -6,6 +6,7 @@ require('dotenv').config();
 const cors = require('cors');
 const { response } = require('express');
 const superagent = require('superagent');
+// const { parse } = require('dotenv/types');
 
 // Application Setup
 const app = express();
@@ -49,19 +50,32 @@ function locationHandler(request, response){
 }
 
 function restaurantHandler(request, response) {
-  const lat = request.query.latitude;
-  const lon = request.query.longitude;
-  const page = parseInt(request.query.page);
+  const lat = parseFloat(request.query.latitude);
+  const lon = parseFloat(request.query.longitude);
+  const page = request.query.page;
   const restaurantPerPage = 5;
   const start = ((page - 1) * restaurantPerPage + 1);
-  const url = '';
+  const url = 'https://api.yelp.com/v3/businesses/search';
   superagent.get(url)
     .query({
       latitude: lat,
+      longitude: lon,
+      limit: restaurantPerPage,
+      offset: start
     })
     .set('Authorization', `Bearer ${process.env.YELP_KEY}`)
-    .then()
-    .catch()
+    .then(yelpResponse => {
+      const arrayOfRestaurants = yelpResponse.body.businesses;
+      const restaurantsResults = [];
+      arrayOfRestaurants.forEach(restaurantObj => {
+        restaurantsResults.push(new Restaurant(restaurantObj));
+      });
+      response.send(restaurantsResults);
+    })
+    .catch(err => {
+      console.log(err);
+      errorHandler(err, request, response)
+    });
 
   // const restaurantsData = require('./data/restaurants.json');
   // const arrayOfRestaurants = restaurantsData.nearby_restaurants;
@@ -99,11 +113,11 @@ function Location(city, locationData) {
 }
 
 function Restaurant(obj) {
-  this.name = obj.restaurant.name;
-  this.url = obj.restaurant.url;
-  this.rating = obj.restaurant.user_rating.aggregate_rating;
-  this.price = obj.restaurant.price_range;
-  this.image_url = obj.restaurant.featured_image;
+  this.name = obj.name;
+  this.url = obj.url;
+  this.rating = obj.rating;
+  this.price = obj.price;
+  this.image_url = obj.image_url;
 }
 
 function Weather(conditions) {
