@@ -6,11 +6,15 @@ require('dotenv').config();
 const cors = require('cors');
 const { response } = require('express');
 const superagent = require('superagent');
+const pg = require('pg');
 
 // Application Setup
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
+
+const client = new pg.Client(process.env.DATABASE_URL);
+client.on('error', err => { throw err });
 
 // Route Definitions
 app.get('/', rootHandler);
@@ -160,4 +164,11 @@ function Trails(trail) {
 }
 
 // App listener
-app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+client.connect()
+  .then(() => {
+    console.log('Postgres connected.');
+    app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+  })
+  .catch(err => {
+    throw `Postgres err: ${err.message}`;
+  });
