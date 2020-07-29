@@ -151,9 +151,9 @@ function Trails(trail) {
   this.location = trail.location;
   this.length = trail.length;
   this.stars = trail.stars;
-  this.starVotes = trail.starVotes;
+  this.star_votes = trail.starVotes;
   this.summary = trail.summary;
-  this.trailUrl = trail.url;
+  this.trail_url = trail.url;
   this.conditions = trail.conditionStatus;
   this.conditionDate = trail.conditionDate;
 }
