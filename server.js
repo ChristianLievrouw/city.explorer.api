@@ -155,7 +155,8 @@ function Trails(trail) {
   this.summary = trail.summary;
   this.trail_url = trail.url;
   this.conditions = trail.conditionStatus;
-  this.conditionDate = trail.conditionDate;
+  this.condition_date = trail.conditionDate.slice(0, 10);
+  this.condition_time = trail.conditionDate.slice(12);
 }
 
 // App listener
