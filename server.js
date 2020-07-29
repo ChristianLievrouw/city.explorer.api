@@ -6,7 +6,6 @@ require('dotenv').config();
 const cors = require('cors');
 const { response } = require('express');
 const superagent = require('superagent');
-// const { parse } = require('dotenv/types');
 
 // Application Setup
 const app = express();
@@ -18,6 +17,7 @@ app.get('/', rootHandler);
 app.get('/location', locationHandler);
 app.get('/yelp', restaurantHandler);
 app.get('/weather', weatherHandler);
+app.get('/trails', trailsHandler);
 app.use('*', notFoundHandler);
 app.use(errorHandler);
 
@@ -44,9 +44,6 @@ function locationHandler(request, response){
       console.log(err);
       errorHandler(err, request, response)
     });
-  //const locationData = require('./data/location.json'); // delete
-  // const location = new Location(city, locationData);
-  // response.status(200).send(location);
 }
 
 function restaurantHandler(request, response) {
@@ -76,24 +73,48 @@ function restaurantHandler(request, response) {
       console.log(err);
       errorHandler(err, request, response)
     });
+}
 
-  // const restaurantsData = require('./data/restaurants.json');
-  // const arrayOfRestaurants = restaurantsData.nearby_restaurants;
-  // const restaurantsResults = [];
-  // arrayOfRestaurants.forEach(restaurantObj => {
-  //   restaurantsResults.push(new Restaurant(restaurantObj));
-  // });
-  // response.send(restaurantsResults)
+function trailsHandler(request, response) {
+  const latitude = parseInt(request.query.latitude);
+  const longitude = parseInt(request.query.longitude);
+  const url = 'https://www.hikingproject.com/data/get-trails';
+  superagent.get(url)
+    .query({
+      key: process.env.TRAIL_KEY,
+      lat: latitude,
+      lon: longitude,
+      maxDistance: 200
+    })
+    .then(trailResponse => {
+      console.log(trailResponse.body);
+      const arrayOfTrailData = trailResponse.body.trails;
+      const trailResults = [];
+      arrayOfTrailData.forEach(trail => {
+        trailResults.push(new Trails(trail));
+      });
+      response.send(trailResults);
+    })
 }
 
 function weatherHandler(request, response) {
-  const weatherData = require('./data/weather.json');
-  const arrayOfWeatherData = weatherData.data;
-  const weatherResults = [];
-  arrayOfWeatherData.forEach(location => {
-    weatherResults.push(new Weather(location));
-  });
-  response.send(weatherResults)
+  const latitude = parseFloat(request.query.latitude);
+  const longitude = parseFloat(request.query.longitude);
+  const url = 'https://api.weatherbit.io/v2.0/forecast/daily';
+  superagent.get(url)
+    .query({
+      key: process.env.WEATHER_API_KEY,
+      lat: latitude,
+      lon: longitude
+    })
+    .then(weatherResponse => {
+      const arrayOfWeatherData = weatherResponse.body.data;
+      const weatherResults = [];
+      arrayOfWeatherData.forEach(location => {
+        weatherResults.push(new Weather(location));
+      });
+      response.send(weatherResults)
+    })
 }
 
 function notFoundHandler(request, response) {
@@ -121,8 +142,21 @@ function Restaurant(obj) {
 }
 
 function Weather(conditions) {
-  this.time = conditions.valid_date;
+  this.time = conditions.datetime;
   this.forecast = conditions.weather.description;
 }
+
+function Trails(trail) {
+  this.name = trail.name;
+  this.location = trail.location;
+  this.length = trail.length;
+  this.stars = trail.stars;
+  this.starVotes = trail.starVotes;
+  this.summary = trail.summary;
+  this.trailUrl = trail.url;
+  this.conditions = trail.conditionStatus;
+  this.conditionDate = trail.conditionDate;
+}
+
 // App listener
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
