@@ -12,7 +12,9 @@ const pg = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
-
+if(!process.env.DATABASE_URL) {
+  throw new Error('Missing database URL.');
+}
 const client = new pg.Client(process.env.DATABASE_URL);
 client.on('error', err => { throw err });
 
@@ -31,22 +33,54 @@ function rootHandler(request, response){
 }
 
 function locationHandler(request, response){
-  const city = request.query.city;
-  const url = 'https://us1.locationiq.com/v1/search.php';
-  superagent.get(url)
-    .query({
-      key: process.env.LOCATION_KEY,
-      q: city,
-      format: 'json'
-    })
+  const city = request.query.city.toLowerCase().trim();
+  getLocationData(city)
     .then(locationData => {
-      const location = locationData.body[0];
-      const newLocation = new Location(city, location);
-      response.status(200).send(newLocation);
+      console.log(locationData);
+      response.status(200).send(locationData);
     })
     .catch(err => {
       console.log(err);
       errorHandler(err, request, response)
+    });
+}
+
+function getLocationData(city) {
+  const SQL = 'SELECT * FROM locations WHERE search_query = $1';
+  const values = [city];
+  return client.query(SQL, values)
+    .then((results) => {
+      console.log(results);
+      if(results.rowCount > 0) {
+        console.log(results);
+        return results.rows[0];
+      } else {
+        const url = 'https://us1.locationiq.com/v1/search.php';
+        return superagent.get(url)
+          .query({
+            key: process.env.LOCATION_KEY,
+            q: city,
+            format: 'json'
+          })
+          .then((data) => {
+            console.log(data);
+            return setLocationData(city, data.body[0]);
+          });
+      }
+    });
+}
+
+function setLocationData(city, locationData) {
+  const location = new Location(city, locationData);
+  const SQL = `
+    INSERT INTO locations (search_query, formatted_query, latitude, longitude)
+    VALUES ($1, $2, $3, $4)
+	RETURNING *;
+  `;
+  const values = [city, location.formatted_query, location.latitude, location.longitude];
+  return client.query(SQL, values)
+    .then(results => {
+      return results.rows[0]
     });
 }
 
