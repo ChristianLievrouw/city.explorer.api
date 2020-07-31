@@ -6,17 +6,17 @@ require('dotenv').config();
 const cors = require('cors');
 const { response } = require('express');
 const superagent = require('superagent');
-const pg = require('pg');
+
+// Our Dependencies
+const client = require('./modules/client');
+const getLocationData = require('./modules/location')
+const getRestaurantData = require('./modules/yelp')
 
 // Application Setup
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors());
-if(!process.env.DATABASE_URL) {
-  throw new Error('Missing database URL.');
-}
-const client = new pg.Client(process.env.DATABASE_URL);
-client.on('error', err => { throw err });
+
 
 // Route Definitions
 app.get('/', rootHandler);
@@ -69,67 +69,13 @@ function locationHandler(request, response){
     });
 }
 
-function getLocationData(city) {
-  const SQL = 'SELECT * FROM locations WHERE search_query = $1';
-  const values = [city];
-  return client.query(SQL, values)
-    .then((results) => {
-      console.log(results);
-      if(results.rowCount > 0) {
-        console.log(results);
-        return results.rows[0];
-      } else {
-        const url = 'https://us1.locationiq.com/v1/search.php';
-        return superagent.get(url)
-          .query({
-            key: process.env.LOCATION_KEY,
-            q: city,
-            format: 'json'
-          })
-          .then((data) => {
-            console.log(data);
-            return setLocationData(city, data.body[0]);
-          });
-      }
-    });
-}
-
-function setLocationData(city, locationData) {
-  const location = new Location(city, locationData);
-  const SQL = `
-    INSERT INTO locations (search_query, formatted_query, latitude, longitude)
-    VALUES ($1, $2, $3, $4)
-	RETURNING *;
-  `;
-  const values = [city, location.formatted_query, location.latitude, location.longitude];
-  return client.query(SQL, values)
-    .then(results => {
-      return results.rows[0]
-    });
-}
-
 function restaurantHandler(request, response) {
   const lat = parseFloat(request.query.latitude);
   const lon = parseFloat(request.query.longitude);
   const page = request.query.page;
-  const restaurantPerPage = 5;
-  const start = ((page - 1) * restaurantPerPage + 1);
-  const url = 'https://api.yelp.com/v3/businesses/search';
-  superagent.get(url)
-    .query({
-      latitude: lat,
-      longitude: lon,
-      limit: restaurantPerPage,
-      offset: start
-    })
-    .set('Authorization', `Bearer ${process.env.YELP_KEY}`)
-    .then(yelpResponse => {
-      const arrayOfRestaurants = yelpResponse.body.businesses;
-      const restaurantsResults = [];
-      arrayOfRestaurants.forEach(restaurantObj => {
-        restaurantsResults.push(new Restaurant(restaurantObj));
-      });
-      response.send(restaurantsResults);
+  getRestaurantData(lat, lon, page)
+    .then(results => {
+      response.send(results);
     })
     .catch(err => {
       console.log(err);
@@ -140,8 +86,32 @@ function restaurantHandler(request, response) {
 function trailsHandler(request, response) {
   const latitude = parseInt(request.query.latitude);
   const longitude = parseInt(request.query.longitude);
+  // const url = 'https://www.hikingproject.com/data/get-trails';
+  // superagent.get(url)
+  //   .query({
+  //     key: process.env.TRAIL_KEY,
+  //     lat: latitude,
+  //     lon: longitude,
+  //     maxDistance: 200
+  //   })
+  getTrailData(latitude, longitude)
+    .then(results => {
+      response.send(results)
+    })
+    // .then(trailResponse => {
+    //   console.log(trailResponse.body);
+    //   const arrayOfTrailData = trailResponse.body.trails;
+    //   const trailResults = [];
+    //   arrayOfTrailData.forEach(trail => {
+    //     trailResults.push(new Trails(trail));
+    //   });
+    //   return trailResults;
+    // })
+}
+
+function getTrailData(latitude, longitude){
   const url = 'https://www.hikingproject.com/data/get-trails';
-  superagent.get(url)
+  return superagent.get(url)
     .query({
       key: process.env.TRAIL_KEY,
       lat: latitude,
@@ -155,7 +125,7 @@ function trailsHandler(request, response) {
       arrayOfTrailData.forEach(trail => {
         trailResults.push(new Trails(trail));
       });
-      response.send(trailResults);
+      return trailResults;
     })
 }
 
@@ -185,22 +155,6 @@ function notFoundHandler(request, response) {
 
 function errorHandler(error, request, response, next) {
   response.status(500).json({ error: true, message: error.message });
-}
-
-// Constructor
-function Location(city, locationData) {
-  this.search_query = city;
-  this.formatted_query = locationData.display_name;
-  this.latitude = parseFloat(locationData.lat);
-  this.longitude = parseFloat(locationData.lon);
-}
-
-function Restaurant(obj) {
-  this.name = obj.name;
-  this.url = obj.url;
-  this.rating = obj.rating;
-  this.price = obj.price;
-  this.image_url = obj.image_url;
 }
 
 function Weather(conditions) {
