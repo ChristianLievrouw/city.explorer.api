@@ -24,12 +24,36 @@ app.get('/location', locationHandler);
 app.get('/yelp', restaurantHandler);
 app.get('/weather', weatherHandler);
 app.get('/trails', trailsHandler);
+app.get('/movies', moviesHandler);
 app.use('*', notFoundHandler);
 app.use(errorHandler);
 
 // Route Handlers
 function rootHandler(request, response){
   response.status(200).send('City Explorer back-end')
+}
+
+function moviesHandler(request, response){
+  const title = request.query.search_query;
+  const url = 'https://api.themoviedb.org/3/search/movie';
+  superagent.get(url)
+    .query({
+      api_key: process.env.MOVIE_KEY,
+      query: title
+    })
+    .then(moviesResponse => {
+      console.log(moviesResponse.body.results);
+      const arrayOfMovieData = moviesResponse.body.results;
+      const movieResults = [];
+      arrayOfMovieData.forEach(movie => {
+        movieResults.push(new Movies(movie));
+      });
+      response.send(movieResults);
+    })
+    .catch(err => {
+      console.log(err);
+      errorHandler(err, request, response)
+    });
 }
 
 function locationHandler(request, response){
@@ -197,6 +221,14 @@ function Trails(trail) {
   this.condition_time = trail.conditionDate.slice(12);
 }
 
+function Movies(movie) {
+  this.title = movie.original_title;
+  this.released_on = movie.released_date;
+  this.total_votes = movie.vote_count;
+  this.average_votes = movie.vote_average;
+  this.image_url = `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
+  this.overview = movie.overview;
+}
 // App listener
 client.connect()
   .then(() => {
