@@ -4,13 +4,16 @@
 const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
-const { response } = require('express');
+// const { response } = require('express');
 const superagent = require('superagent');
 
 // Our Dependencies
 const client = require('./modules/client');
 const getLocationData = require('./modules/location')
 const getRestaurantData = require('./modules/yelp')
+const getTrailData = require('./modules/trails')
+const getWeatherData = require('./modules/weather')
+const getMoviesData = require('./modules/movies')
 
 // Application Setup
 const app = express();
@@ -35,20 +38,9 @@ function rootHandler(request, response){
 
 function moviesHandler(request, response){
   const title = request.query.search_query;
-  const url = 'https://api.themoviedb.org/3/search/movie';
-  superagent.get(url)
-    .query({
-      api_key: process.env.MOVIE_KEY,
-      query: title
-    })
-    .then(moviesResponse => {
-      console.log(moviesResponse.body.results);
-      const arrayOfMovieData = moviesResponse.body.results;
-      const movieResults = [];
-      arrayOfMovieData.forEach(movie => {
-        movieResults.push(new Movies(movie));
-      });
-      response.send(movieResults);
+  getMoviesData(title)
+    .then(results => {
+      response.send(results);
     })
     .catch(err => {
       console.log(err);
@@ -86,46 +78,9 @@ function restaurantHandler(request, response) {
 function trailsHandler(request, response) {
   const latitude = parseInt(request.query.latitude);
   const longitude = parseInt(request.query.longitude);
-  // const url = 'https://www.hikingproject.com/data/get-trails';
-  // superagent.get(url)
-  //   .query({
-  //     key: process.env.TRAIL_KEY,
-  //     lat: latitude,
-  //     lon: longitude,
-  //     maxDistance: 200
-  //   })
   getTrailData(latitude, longitude)
     .then(results => {
       response.send(results)
-    })
-    // .then(trailResponse => {
-    //   console.log(trailResponse.body);
-    //   const arrayOfTrailData = trailResponse.body.trails;
-    //   const trailResults = [];
-    //   arrayOfTrailData.forEach(trail => {
-    //     trailResults.push(new Trails(trail));
-    //   });
-    //   return trailResults;
-    // })
-}
-
-function getTrailData(latitude, longitude){
-  const url = 'https://www.hikingproject.com/data/get-trails';
-  return superagent.get(url)
-    .query({
-      key: process.env.TRAIL_KEY,
-      lat: latitude,
-      lon: longitude,
-      maxDistance: 200
-    })
-    .then(trailResponse => {
-      console.log(trailResponse.body);
-      const arrayOfTrailData = trailResponse.body.trails;
-      const trailResults = [];
-      arrayOfTrailData.forEach(trail => {
-        trailResults.push(new Trails(trail));
-      });
-      return trailResults;
     })
 }
 
@@ -162,31 +117,10 @@ function Weather(conditions) {
   this.forecast = conditions.weather.description;
 }
 
-function Trails(trail) {
-  this.name = trail.name;
-  this.location = trail.location;
-  this.length = trail.length;
-  this.stars = trail.stars;
-  this.star_votes = trail.starVotes;
-  this.summary = trail.summary;
-  this.trail_url = trail.url;
-  this.conditions = trail.conditionStatus;
-  this.condition_date = trail.conditionDate.slice(0, 10);
-  this.condition_time = trail.conditionDate.slice(12);
-}
-
-function Movies(movie) {
-  this.title = movie.original_title;
-  this.released_on = movie.released_date;
-  this.total_votes = movie.vote_count;
-  this.average_votes = movie.vote_average;
-  this.image_url = `https://image.tmdb.org/t/p/w780${movie.poster_path}`;
-  this.overview = movie.overview;
-}
 // App listener
 client.connect()
   .then(() => {
-    console.log('Postgres connected.');
+    console.log('Postgres connected');
     app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
   })
   .catch(err => {
